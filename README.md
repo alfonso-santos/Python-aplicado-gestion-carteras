@@ -4,9 +4,9 @@ Contenido impartido en el curso de Python aplicado a la gestión de carteras de 
 
 <center>
 
-<imgsrc="imgs/python-logo.png"alt="drawing"width="500"/>
+<img src="imgs/python-logo.png"alt="drawing"width="500"/>
 
-<imgsrc="imgs/UAM-Logo.png"alt="drawing"width="400"/>
+<img src="imgs/UAM-Logo.png"alt="drawing"width="400"/>
 
 </center>
 
