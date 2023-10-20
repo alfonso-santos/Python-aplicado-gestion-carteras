@@ -20,7 +20,10 @@ Los **objetivos específicos** del curso son:
 * Fundamentos Teóricos: Profundizar en la teoría moderna de carteras, comprendiendo conceptos esenciales que rigen la gestión de inversiones.
 * Aplicación Práctica con Python: Utilizar Python para simular, optimizar y validar estrategias de inversión basadas en los conceptos teóricos aprendidos.
 
-</center>
+
+Para seguir el contenido del curso, abrir el notebook **menu-principal.ipynb** e ir pienchando en los diferentes apartados de cada capítulo.
+
+---
 
 **PROFESORES:**
 
