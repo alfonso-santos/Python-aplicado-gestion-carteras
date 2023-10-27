@@ -17,22 +17,29 @@ Contenido del archivo:
 5. `ajustar_correlacion(cov_mat, tipo_correlacion="poco", factor=0.5)`:
    Ajusta la matriz de covarianza para modificar la correlación entre activos.
 
-6. `simular_evento_bajista(med_lst, std_lst, cov_mat, impacto_medias=0.2, impacto_vol=0.3, impacto_corr=0.5)`:
+6. `simular_retornos_diarios(media_lst, std_lst, cov_mat, num_dias)`:
+   Simula los retornos diarios de activos basados en sus medias, desviaciones estándar y matriz de covarianzas.
+
+7. `calcular_precios(ret_df, precios_iniciales)`:
+   Calcula los precios a partir de los retornos logarítmicos utilizando precios iniciales.
+
+8. `simular_evento_bajista(med_lst, std_lst, cov_mat, impacto_medias=0.2, impacto_vol=0.3, impacto_corr=0.5)`:
    Simula un evento de mercado bajista ajustando las medias, volatilidades y matriz de covarianza.
 
-7. `simular_impacto_severo(med_lst, std_lst, cov_mat, factor_medias=1.5, factor_vol=0.5, factor_corr=0.7)`:
+9. `simular_impacto_severo(med_lst, std_lst, cov_mat, factor_medias=1.5, factor_vol=0.5, factor_corr=0.7)`:
    Simula un impacto severo en el mercado donde todos los activos pasan a perder.
 
-8. `simular_impacto_bajista_parcial(med_lst, std_lst, cov_mat, prop_affected=0.5, factor_medias=1.5, factor_vol=0.3, factor_corr=0.5)`:
+10. `simular_impacto_bajista_parcial(med_lst, std_lst, cov_mat, prop_affected=0.5, factor_medias=1.5, factor_vol=0.3, factor_corr=0.5)`:
    Simula un impacto bajista en el mercado donde solo algunos activos pasan a perder.
 
-9. `simular_mercado_lateral(med_lst, std_lst, cov_mat, factor_medias=0.5, factor_vol=0.7, factor_corr=0.5)`:
+11. `simular_mercado_lateral(med_lst, std_lst, cov_mat, factor_medias=0.5, factor_vol=0.7, factor_corr=0.5)`:
    Simula el paso a un mercado lateral con activos de baja volatilidad y correlaciones reducidas.
 
-10. `simular_mercado_alcista(med_lst, std_lst, cov_mat, factor_medias=1.5, factor_vol=1.2, factor_corr=0.5)`:
+12. `simular_mercado_alcista(med_lst, std_lst, cov_mat, factor_medias=1.5, factor_vol=1.2, factor_corr=0.5)`:
     Simula un mercado alcista ajustando las medias, volatilidades y matriz de covarianza.
 
 Este archivo ofrece funciones para generar fechas de negocio, simular datos de activos financieros y simular diferentes escenarios de mercado.
+
 """
 
 
@@ -41,6 +48,7 @@ import pandas as pd
 import pandas_market_calendars as mcal
 import matplotlib.pyplot as plt
 import seaborn as sns
+from itertools import product
 
 from utils import dibuja_covar
 
@@ -76,21 +84,21 @@ def generate_business_dates(num_dias, start_date, calendar='XNYS'):
     
     # Inicializar una variable para contar los días laborables
     business_days_count = 0
-    
+
     # Inicializar la fecha de inicio
-    current_date = pd.Timestamp(start_date)
-    
-    # Mientras no se alcance el número deseado de días laborables
+    start_date = pd.Timestamp(start_date)
+    current_date = start_date
+
     while business_days_count < num_dias:
         # Verificar si la fecha actual es un día laborable
         if market_cal.valid_days(start_date=current_date, end_date=current_date).size > 0:
             business_days_count += 1
-        current_date += pd.DateOffset(days=1)  # Avanzar al siguiente día natural
+        # Solo aumenta el current_date si aún no hemos alcanzado el num_days requerido
+        if business_days_count < num_dias:
+            current_date += pd.DateOffset(days=1)  # Avanzar al siguiente día natural
 
-    dias_naturales = current_date - pd.Timestamp(start_date)
-    
-    # Generar un rango de fechas de días hábiles
-    business_days = market_cal.valid_days(start_date=current_date, end_date=current_date + pd.DateOffset(days=dias_naturales.days))
+    dias_naturales = current_date - start_date
+    business_days = market_cal.valid_days(start_date=start_date, end_date=current_date)
     
     return business_days
 
@@ -103,7 +111,7 @@ def generar_datos(n_activos=10, rango_medias=(0, 0.1), rango_std=(0.05, 0.3), ti
     - n_activos: Número de activos.
     - rango_medias: Rango (min, max) para las medias de los activos.
     - rango_std: Rango (min, max) para las desviaciones estándar de los activos.
-    - tipo_correlacion: Tipo de correlación deseada ("positiva", "negativa", "poco" o "mixto").
+    - tipo_correlacion: Tipo de correlación deseada ("positiva", "negativa", "poco" o "mixta").
     
     Retorna:
     - medias: Array con las medias de los activos.
@@ -121,8 +129,8 @@ def generar_datos(n_activos=10, rango_medias=(0, 0.1), rango_std=(0.05, 0.3), ti
     if not (isinstance(rango_std, (list, tuple)) and len(rango_std) == 2 and rango_std[0] < rango_std[1]):
         raise ValueError("El rango de desviaciones estándar debe ser una tupla o lista con dos valores, donde el primero es menor que el segundo.")
     
-    if tipo_correlacion not in ["positiva", "negativa", "poco", "mixto"]:
-        raise ValueError("El tipo de correlación no es válido. Debe ser 'positiva', 'negativa', 'poco' o 'mixto'.")
+    if tipo_correlacion not in ["positiva", "negativa", "poco", "mixta"]:
+        raise ValueError("El tipo de correlación no es válido. Debe ser 'positiva', 'negativa', 'poco' o 'mixta'.")
         
     # Generar medias aleatorias dentro del rango especificado
     medias = np.random.uniform(rango_medias[0], rango_medias[1], n_activos)
@@ -141,7 +149,7 @@ def generar_datos(n_activos=10, rango_medias=(0, 0.1), rango_std=(0.05, 0.3), ti
         corr_mat = 0.5 * (corr_mat + 1)
     elif tipo_correlacion == "negativa":
         corr_mat = 0.5 * (corr_mat - 1)
-    elif tipo_correlacion == "mixto":
+    elif tipo_correlacion == "mixta":
         # Definir los índices para dividir en tres grupos
         idx1 = n_activos // 3
         idx2 = 2 * n_activos // 3
@@ -263,24 +271,82 @@ def ajustar_correlacion(cov_mat, tipo_correlacion="poco", factor=0.5):
     
     return cov_mat_ajustada
 
+def simular_retornos_diarios(media_lst, std_lst, cov_mat, num_dias):
+    """
+    Simula los retornos diarios de activos basados en sus medias, desviaciones estándar y matriz de covarianzas.
 
+    Parámetros:
+    - media_lst: Lista de medias esperadas.
+    - std_lst: Lista de desviaciones estándar.
+    - cov_mat: Matriz de covarianza.
+    - num_dias: Número de días para los que se desea simular los retornos.
 
-def simular_evento_bajista(med_lst, std_lst, cov_mat, impacto_medias=0.2, impacto_vol=0.3, impacto_corr=0.5):
+    Retorna:
+    - retornos: Array 2D (num_dias x número de activos) con los retornos diarios simulados.
+    """
+    
+    # Tratamiento de errores
+    if not isinstance(num_dias, int) or num_dias <= 0:
+        raise ValueError("El número de días debe ser un entero positivo.")
+    
+    if len(media_lst) != len(std_lst):
+        raise ValueError("Las listas de medias y desviaciones estándar deben tener la misma longitud.")
+    
+    if cov_mat.shape != (len(media_lst), len(media_lst)):
+        raise ValueError("La forma de la matriz de covarianza no coincide con la longitud de las listas de medias y desviaciones estándar.")
+    
+    if not np.allclose(cov_mat, cov_mat.T):
+        raise ValueError("La matriz de covarianza debe ser simétrica.")
+    
+    # Simular los retornos diarios usando una distribución multivariada normal
+    retornos = np.random.multivariate_normal(media_lst, cov_mat, num_dias)
+    
+    return retornos
+
+def calcular_precios(ret_df, precios_iniciales):
+    """
+    Calcula los precios a partir de los retornos logarítmicos.
+
+    Parámetros:
+    - ret_df: DataFrame con los retornos logarítmicos.
+    - precios_iniciales: Lista con los precios iniciales de cada activo.
+
+    Retorna:
+    - DataFrame con los precios.
+    """
+    
+    # Verificación: La longitud de precios_iniciales debe coincidir con el número de columnas en ret_df
+    if len(precios_iniciales) != ret_df.shape[1]:
+        raise ValueError("La longitud de precios_iniciales debe coincidir con el número de activos en ret_df.")
+    
+    # Crear un DataFrame para los precios
+    precios_df = ret_df.copy()
+    
+    # Iniciar con los precios iniciales
+    precios_df.iloc[0] = [p_inicial * np.exp(retorno) for p_inicial, retorno in zip(precios_iniciales, ret_df.iloc[0])]
+    
+    # Calcular los precios para los demás días
+    for i in range(1, len(ret_df)):
+        precios_df.iloc[i] = precios_df.iloc[i-1] * np.exp(ret_df.iloc[i])
+    
+    return precios_df
+
+def simular_evento_bajista(med_lst, std_lst, corr_mat, impacto_medias=0.2, impacto_vol=0.3, factor_corr=0.5):
     """
     Simula un evento de mercado bajista ajustando las medias, volatilidades y matriz de covarianza.
 
     Parámetros:
     - med_lst: Lista de medias originales.
     - std_lst: Lista de volatilidades originales.
-    - cov_mat: Matriz de covarianza original.
+    - corr_mat: Matriz de correlaciones original.
     - impacto_medias: Proporción para disminuir las medias (por defecto, 0.2 o 20%).
     - impacto_vol: Proporción para aumentar las volatilidades (por defecto, 0.3 o 30%).
-    - impacto_corr: Proporción para aumentar las correlaciones (por defecto, 0.5 o 50%).
+    - factor_corr: Proporción para aumentar las correlaciones (por defecto, 0.5 o 50%).
 
     Retorna:
     - med_lst_ajustada: Lista de medias ajustadas.
     - std_lst_ajustada: Lista de volatilidades ajustadas.
-    - cov_mat_ajustada: Matriz de covarianza ajustada.
+    - corr_mat_ajustada: Matriz de correlaciones ajustada.
     """
     
     # Ajustar medias
@@ -289,16 +355,21 @@ def simular_evento_bajista(med_lst, std_lst, cov_mat, impacto_medias=0.2, impact
     # Ajustar volatilidades
     std_lst_ajustada = [std * (1 + impacto_vol) for std in std_lst]
     
-    # Ajustar matriz de covarianza: aumentar correlaciones y volatilidades
-    d = np.sqrt(np.diag(cov_mat))
-    corr_mat = cov_mat / d[:, None] / d[None, :]
-    corr_mat_ajustada = corr_mat + impacto_corr * (1 - corr_mat)
-    np.fill_diagonal(corr_mat_ajustada, 1)
-    cov_mat_ajustada = corr_mat_ajustada * np.outer(std_lst_ajustada, std_lst_ajustada)
-    
-    return med_lst_ajustada, std_lst_ajustada, cov_mat_ajustada
+    #corr_mat_ajustada = corr_mat + factor_corr * (1 - corr_mat)
 
-def simular_impacto_severo(med_lst, std_lst, cov_mat, factor_medias=1.5, factor_vol=0.5, factor_corr=0.7):
+    corr_mat_ajustada = corr_mat.copy()
+
+    # Ajustar las correlaciones positivas
+    mask_pos = corr_mat > 0
+    corr_mat_ajustada[mask_pos] = corr_mat[mask_pos] + factor_corr * (1 - corr_mat[mask_pos])
+
+    # Ajustar las correlaciones negativas
+    mask_neg = corr_mat < 0
+    corr_mat_ajustada[mask_neg] = corr_mat[mask_neg] - factor_corr * (1 + corr_mat[mask_neg])
+       
+    return med_lst_ajustada, std_lst_ajustada, corr_mat_ajustada
+
+def simular_impacto_severo(med_lst, std_lst, corr_mat, factor_medias=1.5, factor_vol=0.5, factor_corr=0.7):
     """
     Simula un impacto severo en el mercado ajustando las medias, volatilidades y matriz de covarianza.
 
@@ -321,24 +392,36 @@ def simular_impacto_severo(med_lst, std_lst, cov_mat, factor_medias=1.5, factor_
     
     # Ajustar volatilidades
     std_lst_ajustada = [std * (1 + factor_vol) for std in std_lst]
-    
-    # Ajustar matriz de covarianza: aumentar correlaciones y volatilidades
-    d = np.sqrt(np.diag(cov_mat))
-    corr_mat = cov_mat / d[:, None] / d[None, :]
-    corr_mat_ajustada = corr_mat + factor_corr * (1 - corr_mat)
-    np.fill_diagonal(corr_mat_ajustada, 1)
-    cov_mat_ajustada = corr_mat_ajustada * np.outer(std_lst_ajustada, std_lst_ajustada)
-    
-    return med_lst_ajustada, std_lst_ajustada, cov_mat_ajustada
 
-def simular_impacto_bajista_parcial(med_lst, std_lst, cov_mat, prop_affected=0.5, factor_medias=1.5, factor_vol=0.3, factor_corr=0.5):
+
+    corr_mat_ajustada = corr_mat.copy()
+
+    # Ajustar las correlaciones positivas
+    mask_pos = corr_mat > 0
+    corr_mat_ajustada[mask_pos] = corr_mat[mask_pos] + factor_corr * (1 - corr_mat[mask_pos])
+
+    # Ajustar las correlaciones negativas
+    mask_neg = corr_mat < 0
+    corr_mat_ajustada[mask_neg] = corr_mat[mask_neg] - factor_corr * (1 + corr_mat[mask_neg])
+       
+    
+    # # Ajustar matriz de covarianza: aumentar correlaciones y volatilidades
+    # d = np.sqrt(np.diag(cov_mat))
+    # corr_mat = cov_mat / d[:, None] / d[None, :]
+    # corr_mat_ajustada = corr_mat + factor_corr * (1 - corr_mat)
+    # np.fill_diagonal(corr_mat_ajustada, 1)
+    # cov_mat_ajustada = corr_mat_ajustada * np.outer(std_lst_ajustada, std_lst_ajustada)
+    
+    return med_lst_ajustada, std_lst_ajustada, corr_mat_ajustada
+
+def simular_impacto_bajista_parcial(med_lst, std_lst, corr_mat, prop_affected=0.5, factor_medias=1.5, factor_vol=0.3, factor_corr=0.5):
     """
     Simula un impacto parcial en el mercado donde algunos activos pasan a perder y otros no.
 
     Parámetros:
     - med_lst: Lista de medias originales.
     - std_lst: Lista de volatilidades originales.
-    - cov_mat: Matriz de covarianza original.
+    - corr_mat: Matriz de correlaciones original.
     - prop_affected: Proporción de activos que se verán afectados negativamente (por defecto, 0.5 o 50%).
     - factor_medias: Factor para aumentar la severidad de las pérdidas de los activos afectados (por defecto, 1.5).
     - factor_vol: Proporción para aumentar las volatilidades (por defecto, 0.3 o 30%).
@@ -347,7 +430,7 @@ def simular_impacto_bajista_parcial(med_lst, std_lst, cov_mat, prop_affected=0.5
     Retorna:
     - med_lst_ajustada: Lista de medias ajustadas.
     - std_lst_ajustada: Lista de volatilidades ajustadas.
-    - cov_mat_ajustada: Matriz de covarianza ajustada.
+    - corr_mat_ajustada: Matriz de correlaciones ajustada.
     """
     
     # Seleccionar aleatoriamente los activos que se verán afectados
@@ -360,16 +443,20 @@ def simular_impacto_bajista_parcial(med_lst, std_lst, cov_mat, prop_affected=0.5
         med_lst_ajustada[idx] = -abs(med_lst[idx]) * factor_medias
     
     # Ajustar volatilidades
-    std_lst_ajustada = [std * (1 + factor_vol) for std in std_lst]
+    std_lst_ajustada = std_lst.copy()
+    for idx in affected_indices:
+        std_lst_ajustada[idx] = std_lst[idx] * (1 + factor_vol)
+
+    # Ajustar correlaciones    
+    corr_mat_ajustada = corr_mat.copy()
     
-    # Ajustar matriz de covarianza: aumentar correlaciones
-    d = np.sqrt(np.diag(cov_mat))
-    corr_mat = cov_mat / d[:, None] / d[None, :]
-    corr_mat_ajustada = corr_mat + factor_corr * (1 - corr_mat)
-    np.fill_diagonal(corr_mat_ajustada, 1)
-    cov_mat_ajustada = corr_mat_ajustada * np.outer(std_lst_ajustada, std_lst_ajustada)
+    for i, j in list(product(affected_indices, affected_indices)):
+        if i != j and corr_mat[i][j] > 0:
+            corr_mat_ajustada[i][j] += factor_corr * (1 - corr_mat[i][j])
+        elif i != j and corr_mat[i][j] < 0:
+            corr_mat_ajustada[i][j] -= factor_corr * (1 + corr_mat[i][j])
     
-    return med_lst_ajustada, std_lst_ajustada, cov_mat_ajustada
+    return med_lst_ajustada, std_lst_ajustada, corr_mat_ajustada
 
 def simular_mercado_lateral(med_lst, std_lst, cov_mat, factor_medias=0.5, factor_vol=0.7, factor_corr=0.5):
     """
